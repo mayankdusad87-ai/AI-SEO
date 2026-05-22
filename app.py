@@ -155,7 +155,7 @@ if generate:
         try:
 
             response = client.chat.completions.create(
-                model="grok-2-latest",
+                model="grok-beta",
                 messages=[
                     {
                         "role": "system",
