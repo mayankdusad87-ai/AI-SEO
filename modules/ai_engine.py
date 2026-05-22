@@ -1,4 +1,4 @@
-from openai import OpenAI
+from groq import Groq
 from dotenv import load_dotenv
 import os
 import json
@@ -12,12 +12,11 @@ from modules.prompt_engine import build_prompt
 load_dotenv()
 
 # =========================================
-# API CLIENT
+# GROQ CLIENT
 # =========================================
 
-client = OpenAI(
-    api_key=os.getenv("XAI_API_KEY"),
-    base_url="https://api.x.ai/v1",
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
 # =========================================
@@ -29,7 +28,7 @@ def generate_seo_data(project_data):
     prompt = build_prompt(project_data)
 
     response = client.chat.completions.create(
-        model="grok-2-latest",
+        model="llama3-70b-8192",
         messages=[
             {
                 "role": "system",
@@ -40,9 +39,12 @@ def generate_seo_data(project_data):
                 "content": prompt
             }
         ],
-        temperature=0.7
+        temperature=0.7,
     )
 
     result = response.choices[0].message.content
+
+    # Clean markdown JSON if model returns ```json
+    result = result.replace("```json", "").replace("```", "").strip()
 
     return json.loads(result)
