@@ -1,14 +1,6 @@
 import streamlit as st
-from openai import OpenAI
-from dotenv import load_dotenv
-import os
-import json
-
-# =========================================
-# LOAD ENV VARIABLES
-# =========================================
-
-load_dotenv()
+from modules.ai_engine import generate_seo_data
+from modules.seo_formatter import display_results
 
 # =========================================
 # PAGE CONFIG
@@ -21,23 +13,50 @@ st.set_page_config(
 )
 
 # =========================================
-# API CLIENT
+# CUSTOM CSS
 # =========================================
 
-client = OpenAI(
-    api_key=os.getenv("XAI_API_KEY"),
-    base_url="https://api.x.ai/v1",
-)
+st.markdown("""
+<style>
+
+.main {
+    padding-top: 1rem;
+}
+
+.stButton button {
+    width: 100%;
+    background-color: black;
+    color: white;
+    border-radius: 10px;
+    height: 3rem;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.stButton button:hover {
+    background-color: #333333;
+    color: white;
+}
+
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 # =========================================
 # TITLE
 # =========================================
 
 st.title("🏢 AI Real Estate SEO Generator")
-st.markdown("Generate SEO keywords & hashtags for real estate projects using AI.")
+st.markdown(
+    "Generate SEO keywords, long-tail keywords, and hashtags using AI."
+)
 
 # =========================================
-# SIDEBAR INPUTS
+# SIDEBAR
 # =========================================
 
 st.sidebar.header("Project Details")
@@ -94,140 +113,34 @@ brand_positioning = st.sidebar.selectbox(
     ]
 )
 
-usp = st.sidebar.text_area("USP (Unique Selling Proposition)")
+usp = st.sidebar.text_area("USP")
 
 # =========================================
 # GENERATE BUTTON
 # =========================================
 
-generate = st.button("🚀 Generate SEO & Hashtags")
+if st.button("🚀 Generate SEO & Hashtags"):
 
-# =========================================
-# AI GENERATION
-# =========================================
-
-if generate:
-
-    # Validation
     if not project_name:
-        st.warning("Please enter Project Name")
+        st.warning("Please enter project name")
         st.stop()
 
-    with st.spinner("Generating SEO keywords and hashtags..."):
+    project_data = {
+        "project_name": project_name,
+        "city": city,
+        "micro_market": micro_market,
+        "project_type": project_type,
+        "configuration": configuration,
+        "landmarks": landmarks,
+        "brand_positioning": brand_positioning,
+        "usp": usp
+    }
 
-        prompt = f"""
-        You are an expert real estate SEO strategist.
-
-        Generate the following for the project below:
-
-        1. 20 SEO Keywords
-        2. 15 Long Tail Keywords
-        3. 30 Instagram Hashtags
-
-        Project Details:
-        -----------------
-        Project Name: {project_name}
-        City: {city}
-        Micro Market: {micro_market}
-        Project Type: {project_type}
-        Configuration: {configuration}
-        Nearby Landmarks: {landmarks}
-        Brand Positioning: {brand_positioning}
-        USP: {usp}
-
-        Focus on:
-        - High search intent
-        - Local SEO
-        - Real estate buyers
-        - Premium branding
-        - Social media discoverability
-
-        Return ONLY valid JSON.
-
-        Format:
-        {{
-            "seo_keywords": [],
-            "long_tail_keywords": [],
-            "hashtags": []
-        }}
-        """
+    with st.spinner("Generating SEO data..."):
 
         try:
-
-            response = client.chat.completions.create(
-                model="grok-beta",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a real estate SEO expert."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=0.7,
-            )
-
-            result = response.choices[0].message.content
-
-            # Parse JSON
-            data = json.loads(result)
-
-            seo_keywords = data.get("seo_keywords", [])
-            long_tail_keywords = data.get("long_tail_keywords", [])
-            hashtags = data.get("hashtags", [])
-
-            # =========================================
-            # DISPLAY OUTPUT
-            # =========================================
-
-            st.success("SEO Generated Successfully!")
-
-            tab1, tab2, tab3 = st.tabs(
-                [
-                    "SEO Keywords",
-                    "Long Tail Keywords",
-                    "Hashtags"
-                ]
-            )
-
-            # =========================================
-            # SEO KEYWORDS TAB
-            # =========================================
-
-            with tab1:
-
-                st.subheader("SEO Keywords")
-
-                for keyword in seo_keywords:
-                    st.markdown(f"- {keyword}")
-
-            # =========================================
-            # LONG TAIL KEYWORDS TAB
-            # =========================================
-
-            with tab2:
-
-                st.subheader("Long Tail Keywords")
-
-                for keyword in long_tail_keywords:
-                    st.markdown(f"- {keyword}")
-
-            # =========================================
-            # HASHTAGS TAB
-            # =========================================
-
-            with tab3:
-
-                st.subheader("Instagram Hashtags")
-
-                hashtag_text = " ".join(hashtags)
-
-                st.code(hashtag_text)
-
-        except json.JSONDecodeError:
-            st.error("AI returned invalid JSON. Try again.")
+            result = generate_seo_data(project_data)
+            display_results(result)
 
         except Exception as e:
             st.error(f"Error: {str(e)}")
